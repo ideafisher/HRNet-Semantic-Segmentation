@@ -17,3 +17,4 @@ events.out.*
 *.pdf
 *.json
 *.log
+*.pyc

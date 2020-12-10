@@ -34,6 +34,9 @@ from core.function import train, validate
 from utils.modelsummary import get_model_summary
 from utils.utils import create_logger, FullModel, get_rank
 
+import torch.distributed as dist
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Train segmentation network')
     
@@ -73,6 +76,7 @@ def main():
     cudnn.enabled = config.CUDNN.ENABLED
     gpus = list(config.GPUS)
     distributed = len(gpus) > 1
+
     device = torch.device('cuda:{}'.format(args.local_rank))
 
     # build model
@@ -98,6 +102,7 @@ def main():
         torch.distributed.init_process_group(
             backend="nccl", init_method="env://",
         )
+
 
     # prepare data
     crop_size = (config.TRAIN.IMAGE_SIZE[1], config.TRAIN.IMAGE_SIZE[0])
@@ -194,10 +199,14 @@ def main():
                                  weight=train_dataset.class_weights)
 
     model = FullModel(model, criterion)
-    model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+    if distributed:
+        model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
     model = model.to(device)
-    model = nn.parallel.DistributedDataParallel(
-        model, device_ids=[args.local_rank], output_device=args.local_rank)
+    if distributed:
+        model = nn.parallel.DistributedDataParallel(
+            model, device_ids=[args.local_rank], output_device=args.local_rank)
+    else:
+        model = nn.DataParallel(model)
 
     # optimizer
     if config.TRAIN.OPTIMIZER == 'sgd':

@@ -195,8 +195,9 @@ def main():
                                      min_kept=config.LOSS.OHEMKEEP,
                                      weight=train_dataset.class_weights)
     else:
-        criterion = CrossEntropy(ignore_label=config.TRAIN.IGNORE_LABEL,
-                                 weight=train_dataset.class_weights)
+        criterion = CrossEntropy(ignore_label=config.TRAIN.IGNORE_LABEL)
+        #criterion = CrossEntropy(ignore_label=config.TRAIN.IGNORE_LABEL,
+        #                         weight=train_dataset.class_weights)
 
     model = FullModel(model, criterion)
     if distributed:
